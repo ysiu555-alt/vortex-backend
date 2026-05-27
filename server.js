@@ -12,17 +12,23 @@ const billingController = require('./src/controllers/billingController');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Безопасность
+// Настройка безопасности заголовков
 app.use(helmet());
+
+// Настройка CORS (Решение проблемы с ошибкой подключения)
+// Если в переменных Render задан FRONTEND_URL, сервер будет слушать его.
+// Если переменной нет — он автоматически разрешит запросы со всех доменов, включая тестовые деплои Cloudflare.
+const allowedOrigin = process.env.FRONTEND_URL;
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://kaliang.work.gd',
-    optionsSuccessStatus: 200
+    origin: allowedOrigin ? allowedOrigin : true, 
+    optionsSuccessStatus: 200,
+    credentials: true
 }));
 
 // Парсинг JSON
 app.use(express.json());
 
-// Маршруты
+// Маршруты API
 app.use('/api/auth', authRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/app', appRoutes);
