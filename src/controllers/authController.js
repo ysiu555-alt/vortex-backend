@@ -99,27 +99,22 @@ const login = async (req, res) => {
 
 const appLogin = async (req, res) => {
     try {
-        const { token, hwid, mac_address, ip_address } = req.body;
+        console.log('App Login request body:', req.body);
+        const { email, password, hwid, mac_address, ip_address } = req.body;
 
-        if (!token || !hwid) {
-            return res.status(400).json({ status: 'error', message: 'Ключ или HWID не переданы' });
+        if (!email || !password || !hwid) {
+            console.log('Missing fields:', { email: !!email, password: !!password, hwid: !!hwid });
+            return res.status(400).json({ status: 'error', message: 'Email, пароль или HWID не переданы' });
         }
 
-        const keyData = await FunPayKey.findOne({ where: { coupon_code: token } });
-        if (!keyData) {
-            return res.status(404).json({ status: 'error', message: 'Указанный ключ не существует' });
-        }
-
-        if (!keyData.is_used || !keyData.used_by_user_id) {
-            return res.status(403).json({ 
-                status: 'error', 
-                message: 'Этот ключ еще не был активирован в личном кабинете на сайте!' 
-            });
-        }
-
-        const user = await User.findByPk(keyData.used_by_user_id);
+        const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(404).json({ status: 'error', message: 'Пользователь не найден' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) {
+            return res.status(401).json({ status: 'error', message: 'Неверный пароль' });
         }
 
         const now = new Date();
@@ -139,7 +134,7 @@ const appLogin = async (req, res) => {
                 return res.status(403).json({
                     status: 'error',
                     code: 'HWID_MISMATCH',
-                    message: 'Этот ключ уже привязан к другому компьютеру!'
+                    message: 'Аккаунт привязан к другому компьютеру!'
                 });
             }
             await user.update({ mac_address, ip_address, last_login: new Date() });
