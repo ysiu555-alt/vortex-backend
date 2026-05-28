@@ -159,19 +159,18 @@ const appLogin = async (req, res) => {
     }
 };
 
-const getMe = async (req, res) => {
+const getProfile = async (req, res) => {
     try {
-        // req.user заполняется middleware authenticateToken
         const user = await User.findByPk(req.user.userId, {
-            attributes: ['id', 'email', 'subscription_type', 'expires_at', 'hwid']
+            attributes: ['email', 'subscription_type', 'expires_at', 'hwid']
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'Пользователь не найден' });
+            return res.status(404).json({ status: 'error', message: 'Пользователь не найден' });
         }
 
         res.status(200).json({
-            success: true,
+            status: 'success',
             user: {
                 email: user.email,
                 subscription_type: user.subscription_type,
@@ -180,8 +179,8 @@ const getMe = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('GetMe error:', error);
-        res.status(500).json({ message: 'Ошибка сервера' });
+        console.error('GetProfile error:', error);
+        res.status(500).json({ status: 'error', message: 'Ошибка сервера' });
     }
 };
 
@@ -189,5 +188,5 @@ module.exports = {
     register,
     login,
     appLogin,
-    getMe
+    getProfile
 };
