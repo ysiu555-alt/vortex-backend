@@ -51,6 +51,19 @@ function initializeDatabase() {
             activated_at TIMESTAMP DEFAULT NULL,
             FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL
         )`);
+
+        // Добавление новых колонок для ЭТАПА 2 (HWID, MAC, IP)
+        // Используем отдельные запросы, чтобы не прервать инициализацию, если колонки уже есть
+        db.run('ALTER TABLE users ADD COLUMN mac_address TEXT DEFAULT NULL;', (err) => {
+            if (err && !err.message.includes('duplicate column name')) {
+                console.error('Error adding mac_address:', err.message);
+            }
+        });
+        db.run('ALTER TABLE users ADD COLUMN ip_address TEXT DEFAULT NULL;', (err) => {
+            if (err && !err.message.includes('duplicate column name')) {
+                console.error('Error adding ip_address:', err.message);
+            }
+        });
     });
 }
 

@@ -1,16 +1,11 @@
 const rateLimit = require('express-rate-limit');
 
 const authLimiter = rateLimit({
-    windowMs: 15 * 1000, // 15 секунд
+    windowMs: 15 * 60 * 1000, // 15 минут
     max: 5, // максимум 5 запросов
-    message: { message: 'Слишком много запросов, пожалуйста, подождите 15 минут.' },
+    message: { message: 'Слишком много попыток входа, пожалуйста, подождите 15 минут.' },
     standardHeaders: true,
     legacyHeaders: false,
-    // В ТЗ указано: "При нарушении — блокировка IP на 15 минут". 
-    // Стандартный rateLimit просто ограничивает в окне. 
-    // Для строгой блокировки на 15 минут после нарушения можно использовать skipSuccessfulRequests: false
-    // Но обычно подразумевается окно. Оставим стандартное поведение или уточним.
-    // Переопределим windowMs на 15 минут для блокировки, если нужно именно 15 минут блокировки.
     handler: (req, res, next, options) => {
         res.status(429).json(options.message);
     }

@@ -6,4 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 router.post('/buy', authenticateToken, billingController.buy);
 router.post('/redeem', authenticateToken, billingController.redeem);
 
+// Вебхук вынесен отдельно (без middleware JWT)
+router.post('/webhook/cryptobot', billingController.webhook);
+
 module.exports = router;

@@ -25,11 +25,11 @@ const register = async (req, res) => {
             return res.status(400).json({ message: 'Этот Email уже зарегистрирован' });
         }
 
-        // Определение IP
-        const regIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        // Определение IP (Используем req.ip благодаря trust proxy)
+        const regIp = req.ip;
 
         // Проверка на мультиаккаунтинг триала
-        const ipDuplicate = await db.get('SELECT id FROM users WHERE reg_ip = ? AND subscription_type = "TRIAL_3DAYS" LIMIT 1', [regIp]);
+        const ipDuplicate = await db.get('SELECT id FROM users WHERE reg_ip = ? AND subscription_type != "NONE" LIMIT 1', [regIp]);
 
         let subscriptionType = 'NONE';
         let expiresAt = null;
@@ -95,7 +95,83 @@ const login = async (req, res) => {
     }
 };
 
+const appLogin = async (req, res) => {
+    try {
+        const { token, hwid, mac_address, ip_address } = req.body;
+
+        if (!token || !hwid) {
+            return res.status(400).json({ status: 'error', message: 'Ключ или HWID не переданы' });
+        }
+
+        // 1. Поиск ключа в таблице купонов
+        const keyData = await db.get('SELECT * FROM funpay_keys WHERE coupon_code = ?', [token]);
+        if (!keyData) {
+            return res.status(404).json({ status: 'error', message: 'Указанный ключ не существует' });
+        }
+
+        // 2. Проверка, активирован ли ключ на сайте
+        if (keyData.is_used === 0 || !keyData.used_by_user_id) {
+            return res.status(403).json({ 
+                status: 'error', 
+                message: 'Этот ключ еще не был активирован в личном кабинете на сайте!' 
+            });
+        }
+
+        // 3. Поиск пользователя, активировавшего ключ
+        const user = await db.get('SELECT * FROM users WHERE id = ?', [keyData.used_by_user_id]);
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: 'Пользователь не найден' });
+        }
+
+        // 4. Проверка срока действия подписки
+        const now = new Date();
+        const expiresAt = user.expires_at ? new Date(user.expires_at) : null;
+
+        if (user.subscription_type === 'NONE' || !expiresAt || expiresAt < now) {
+            return res.status(403).json({ 
+                status: 'error', 
+                message: 'Срок действия вашей подписки истек или она не активна' 
+            });
+        }
+
+        // 5. Валидация аппаратной привязки (HWID Flow)
+        if (!user.hwid) {
+            // Первая привязка устройства
+            await db.run(
+                'UPDATE users SET hwid = ?, mac_address = ?, ip_address = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?',
+                [hwid, mac_address, ip_address, user.id]
+            );
+        } else {
+            // Проверка на совпадение HWID
+            if (user.hwid !== hwid) {
+                return res.status(403).json({
+                    status: 'error',
+                    code: 'HWID_MISMATCH',
+                    message: 'Этот ключ уже привязан к другому компьютеру!'
+                });
+            }
+            // Обновление данных последнего входа
+            await db.run(
+                'UPDATE users SET mac_address = ?, ip_address = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?',
+                [mac_address, ip_address, user.id]
+            );
+        }
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Доступ разрешен',
+            subscription_type: user.subscription_type,
+            expires_at: user.expires_at
+        });
+
+    } catch (error) {
+        console.error('App Login error:', error);
+        return res.status(500).json({ status: 'error', message: 'Ошибка сервера при проверке софта' });
+    }
+};
+
 module.exports = {
     register,
-    login
+    login,
+    appLogin
 };
