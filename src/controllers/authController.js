@@ -143,9 +143,12 @@ const appLogin = async (req, res) => {
             await user.update({ mac_address, ip_address, last_login: new Date() });
         }
 
+        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
         return res.status(200).json({
             status: 'success',
             message: 'Доступ разрешен',
+            token: token,
             subscription_type: user.subscription_type,
             expires_at: user.expires_at
         });
