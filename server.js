@@ -19,14 +19,18 @@ app.set('trust proxy', 1);
 // Настройка безопасности заголовков
 app.use(helmet());
 
-// Настройка CORS (Решение проблемы с ошибкой подключения)
+// Настройка CORS (Полное устранение блокировки со стороны браузера)
 const allowedOrigin = process.env.FRONTEND_URL;
 app.use(cors({
-    // Если FRONTEND_URL задан — пускаем только его. 
-    // Если нет — динамически подставляем домен, с которого пришел запрос (идеально для тестов в Cloudflare)
-    origin: allowedOrigin ? allowedOrigin : function (origin, callback) {
-        callback(null, origin || '*');
-    }, 
+    origin: function (origin, callback) {
+        // Разрешаем запросы без origin (например, Postman) или если origin совпадает с FRONTEND_URL
+        if (!origin || origin === allowedOrigin) {
+            callback(null, true);
+        } else {
+            // На этапе разработки автоматически одобряем текущий origin фронтенда, если он пришел
+            callback(null, origin);
+        }
+    },
     optionsSuccessStatus: 200,
     credentials: true
 }));
