@@ -99,11 +99,14 @@ const login = async (req, res) => {
 
 const appLogin = async (req, res) => {
     try {
-        console.log('App Login request body:', req.body);
+        console.log('--- Debugging Request Body ---');
+        console.log('Type of req.body:', typeof req.body);
+        console.log('Full req.body:', JSON.stringify(req.body));
+        
         const { email, password, hwid, mac_address, ip_address } = req.body;
 
         if (!email || !password || !hwid) {
-            console.log('Missing fields:', { email: !!email, password: !!password, hwid: !!hwid });
+            console.log('Validation failed. Fields present:', { email: !!email, password: !!password, hwid: !!hwid });
             return res.status(400).json({ status: 'error', message: 'Email, пароль или HWID не переданы' });
         }
 
