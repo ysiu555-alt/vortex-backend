@@ -13,25 +13,25 @@ const adminRoutes = require('./src/routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🚀 ИСПРАВЛЕНИЕ: Доверяем прокси-серверу Render, чтобы корректно определялись IP-адреса
-app.set('trust proxy', 1);
+// 🚀 ИСПРАВЛЕНИЕ: Доверяем прокси (Render + Cloudflare)
+app.set('trust proxy', true);
 
 // Настройка безопасности заголовков
 app.use(helmet());
 
-// Настройка CORS (Исправлено: только разрешенный домен)
+// Настройка CORS (Исправлено: расширена поддержка)
 const allowedOrigin = process.env.FRONTEND_URL;
 app.use(cors({
     origin: function (origin, callback) {
-        // Разрешаем запросы без origin (например, мобильные приложения или curl) 
-        // или если origin совпадает с FRONTEND_URL
-        if (!origin || origin === allowedOrigin) {
+        // Разрешаем запросы без origin или если origin совпадает с FRONTEND_URL
+        if (!origin || (allowedOrigin && origin === allowedOrigin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'crypto-pay-api-signature'],
     credentials: true
 }));
 
