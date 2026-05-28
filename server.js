@@ -12,15 +12,21 @@ const billingController = require('./src/controllers/billingController');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 🚀 ИСПРАВЛЕНИЕ: Доверяем прокси-серверу Render, чтобы корректно определялись IP-адреса
+// Это полностью убирает ошибку ERR_ERL_UNEXPECTED_X_FORWARDED_FOR от express-rate-limit
+app.set('trust proxy', 1);
+
 // Настройка безопасности заголовков
 app.use(helmet());
 
 // Настройка CORS (Решение проблемы с ошибкой подключения)
-// Если в переменных Render задан FRONTEND_URL, сервер будет слушать его.
-// Если переменной нет — он автоматически разрешит запросы со всех доменов, включая тестовые деплои Cloudflare.
 const allowedOrigin = process.env.FRONTEND_URL;
 app.use(cors({
-    origin: allowedOrigin ? allowedOrigin : true, 
+    // Если FRONTEND_URL задан — пускаем только его. 
+    // Если нет — динамически подставляем домен, с которого пришел запрос (идеально для тестов в Cloudflare)
+    origin: allowedOrigin ? allowedOrigin : function (origin, callback) {
+        callback(null, origin || '*');
+    }, 
     optionsSuccessStatus: 200,
     credentials: true
 }));
