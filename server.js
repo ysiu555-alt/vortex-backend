@@ -13,8 +13,8 @@ const adminRoutes = require('./src/routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🚀 ИСПРАВЛЕНИЕ: Доверяем прокси (Render + Cloudflare)
-app.set('trust proxy', true);
+// 🚀 ИСПРАВЛЕНИЕ: Безопасная настройка прокси
+app.set('trust proxy', 'loopback');
 
 // Настройка безопасности заголовков
 app.use(helmet());

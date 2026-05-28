@@ -3,14 +3,17 @@ require('dotenv').config();
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
+    console.log('Auth header:', authHeader); // Логируем заголовок для дебага
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
+        console.log('No token found');
         return res.status(401).json({ message: 'Требуется авторизация' });
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
+            console.log('JWT verification error:', err.message);
             return res.status(401).json({ message: 'Невалидный или просроченный токен' });
         }
         req.user = user;

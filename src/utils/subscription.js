@@ -12,12 +12,13 @@ const PLAN_PRICES = {
 };
 
 function calculateNewExpiry(currentExpiry, planType) {
-    if (planType === 'LIFETIME') {
+    const normalizedPlan = planType.toUpperCase();
+    if (normalizedPlan === 'LIFETIME') {
         return TARIFFS.LIFETIME;
     }
 
     const now = new Date();
-    const duration = TARIFFS[planType];
+    const duration = TARIFFS[normalizedPlan];
     
     if (!duration) {
         throw new Error(`Unknown plan type: ${planType}`);

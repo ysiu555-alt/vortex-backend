@@ -1,8 +1,12 @@
 const rateLimit = require('express-rate-limit');
 
+// Общий генератор ключа, использующий Cloudflare IP
+const cfKeyGenerator = (req) => req.headers['cf-connecting-ip'] || req.ip;
+
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 минут
-    max: 10, // Увеличено до 10 для запаса
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    keyGenerator: cfKeyGenerator, // Используем Cloudflare IP
     message: { message: 'Слишком много попыток входа, пожалуйста, подождите 15 минут.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -12,8 +16,9 @@ const authLimiter = rateLimit({
 });
 
 const redeemLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 минута
-    max: 5, // 5 попыток активации в минуту - достаточно для пользователя
+    windowMs: 1 * 60 * 1000,
+    max: 5,
+    keyGenerator: cfKeyGenerator, // Используем Cloudflare IP
     message: { message: 'Слишком много попыток активации, подождите 1 минуту.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -23,8 +28,9 @@ const redeemLimiter = rateLimit({
 });
 
 const appLimiter = rateLimit({
-    windowMs: 5 * 1000, // 5 секунд
-    max: 5, // Увеличено для стабильности
+    windowMs: 5 * 1000,
+    max: 5,
+    keyGenerator: cfKeyGenerator, // Используем Cloudflare IP
     message: { status: 'error', message: 'Rate limit exceeded' },
     standardHeaders: true,
     legacyHeaders: false,
