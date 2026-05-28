@@ -1,4 +1,4 @@
-const { run } = require('../database');
+const { run } = require('../../database');
 require('dotenv').config();
 
 /**
