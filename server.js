@@ -16,17 +16,18 @@ const PORT = process.env.PORT || 3000;
 // 🚀 ИСПРАВЛЕНИЕ: Безопасная настройка прокси
 app.set('trust proxy', 'loopback');
 
-// Настройка безопасности заголовков
+// Настройка безопасности заголовков (установим после CORS, чтобы разрешить preflight)
 app.use(helmet());
 
-// Настройка CORS (Исправлено: расширена поддержка)
-const allowedOrigin = process.env.FRONTEND_URL;
+// Настройка CORS
 app.use(cors({
     origin: function (origin, callback) {
-        // Разрешаем запросы без origin или если origin совпадает с FRONTEND_URL
-        if (!origin || (allowedOrigin && origin === allowedOrigin)) {
+        console.log('CORS request from origin:', origin);
+        // Разрешаем запросы без origin или запросы с localhost
+        if (!origin || origin.startsWith('http://localhost:')) {
             callback(null, true);
         } else {
+            console.log('CORS blocked origin:', origin);
             callback(new Error('Not allowed by CORS'));
         }
     },
