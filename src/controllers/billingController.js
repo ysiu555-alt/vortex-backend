@@ -1,4 +1,4 @@
-const db = require('../../database');
+const { User, Order, FunPayKey } = require('../../database');
 const { calculateNewExpiry, PLAN_PRICES } = require('../utils/subscription');
 const axios = require('axios');
 const crypto = require('crypto');
@@ -15,13 +15,9 @@ const buy = async (req, res) => {
 
         const amount = PLAN_PRICES[plan];
         
-        // В ТЗ указано: "Выполнение запроса к API Telegram Crypto Bot"
-        // Ссылка в ТЗ: https://pay.cryptomus.com/api/v1/payment или Crypto Bot (/createInvoice)
-        // Будем использовать Crypto Bot API (т.к. далее упоминается crypto-pay-api-signature)
-        
         const token = process.env.CRYPTO_PAY_API_TOKEN;
-        const apiBase = 'https://pay.cryptobot.pay/api/createInvoice'; // Уточненный эндпоинт Crypto Bot
-
+        const apiBase = 'https://pay.cryptobot.pay/api/createInvoice'; 
+        
         try {
             const response = await axios.post(apiBase, {
                 asset: 'USDT',
@@ -34,10 +30,13 @@ const buy = async (req, res) => {
             if (response.data && response.data.ok) {
                 const { invoice_id, pay_url } = response.data.result;
 
-                await db.run(
-                    'INSERT INTO orders (user_id, invoice_id, amount, plan_type, status) VALUES (?, ?, ?, ?, ?)',
-                    [userId, invoice_id, amount, plan, 'PENDING']
-                );
+                await Order.create({
+                    user_id: userId,
+                    invoice_id,
+                    amount,
+                    plan_type: plan,
+                    status: 'PENDING'
+                });
 
                 return res.status(200).json({ success: true, pay_url: pay_url });
             } else {
@@ -59,35 +58,37 @@ const redeem = async (req, res) => {
         const { code } = req.body;
         const userId = req.user.userId;
 
-        const coupon = await db.get('SELECT * FROM funpay_keys WHERE coupon_code = ?', [code]);
+        const coupon = await FunPayKey.findOne({ where: { coupon_code: code } });
         if (!coupon) {
             return res.status(404).json({ message: 'Указанный купон не существует' });
         }
 
-        if (coupon.is_used === 1) {
+        if (coupon.is_used) {
             return res.status(400).json({ message: 'Данный купон уже был активирован ранее' });
         }
 
-        // Атомарная транзакция
-        await db.run('BEGIN TRANSACTION');
-        try {
-            await db.run(
-                'UPDATE funpay_keys SET is_used = 1, used_by_user_id = ?, activated_at = CURRENT_TIMESTAMP WHERE coupon_code = ?',
-                [userId, code]
-            );
+        const user = await User.findByPk(userId);
 
-            const user = await db.get('SELECT expires_at FROM users WHERE id = ?', [userId]);
+        // Атомарная транзакция
+        const t = await require('../../database').sequelize.transaction();
+        try {
+            await coupon.update({ 
+                is_used: true, 
+                used_by_user_id: userId, 
+                activated_at: new Date() 
+            }, { transaction: t });
+
             const newExpiry = calculateNewExpiry(user.expires_at, coupon.plan_type);
 
-            await db.run(
-                'UPDATE users SET subscription_type = ?, expires_at = ? WHERE id = ?',
-                [coupon.plan_type, newExpiry, userId]
-            );
+            await user.update({ 
+                subscription_type: coupon.plan_type, 
+                expires_at: newExpiry 
+            }, { transaction: t });
 
-            await db.run('COMMIT');
+            await t.commit();
             res.status(200).json({ success: true, message: 'Премиум успешно активирован!', plan: coupon.plan_type });
         } catch (txError) {
-            await db.run('ROLLBACK');
+            await t.rollback();
             throw txError;
         }
 
@@ -103,7 +104,6 @@ const webhook = async (req, res) => {
         const body = JSON.stringify(req.body);
         const secret = process.env.CRYPTO_PAY_API_TOKEN;
 
-        // Проверка подписи HMAC-SHA256
         const hmac = crypto.createHmac('sha256', secret);
         hmac.update(body);
         const hash = hmac.digest('hex');
@@ -120,28 +120,28 @@ const webhook = async (req, res) => {
 
         const [userId, plan] = payload.split('_');
 
-        const order = await db.get('SELECT status FROM orders WHERE invoice_id = ?', [invoice_id]);
+        const order = await Order.findOne({ where: { invoice_id } });
         if (!order || order.status === 'PAID') {
             return res.send('OK');
         }
 
-        // Атомарное обновление
-        await db.run('BEGIN TRANSACTION');
+        const user = await User.findByPk(userId);
+
+        const t = await require('../../database').sequelize.transaction();
         try {
-            await db.run('UPDATE orders SET status = "PAID" WHERE invoice_id = ?', [invoice_id]);
+            await order.update({ status: 'PAID' }, { transaction: t });
             
-            const user = await db.get('SELECT expires_at FROM users WHERE id = ?', [userId]);
             const newExpiry = calculateNewExpiry(user.expires_at, plan);
 
-            await db.run(
-                'UPDATE users SET subscription_type = ?, expires_at = ? WHERE id = ?',
-                [plan, newExpiry, userId]
-            );
+            await user.update({ 
+                subscription_type: plan, 
+                expires_at: newExpiry 
+            }, { transaction: t });
 
-            await db.run('COMMIT');
+            await t.commit();
             res.send('OK');
         } catch (txError) {
-            await db.run('ROLLBACK');
+            await t.rollback();
             throw txError;
         }
 

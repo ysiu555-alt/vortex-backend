@@ -1,4 +1,4 @@
-const { run } = require('./database');
+const { FunPayKey, initDb } = require('./database');
 
 /**
  * Генератор случайных ключей формата KLIANG-XXXX-XXXX
@@ -15,21 +15,23 @@ function generateKey() {
  * @param {number} count - Количество ключей
  */
 async function createKeys(planType, count = 1) {
+    await initDb(); // Инициализация БД
     console.log(`Генерация ${count} ключей для плана: ${planType}...`);
     
     let createdCount = 0;
     for (let i = 0; i < count; i++) {
         const code = generateKey();
         try {
-            await run(
-                'INSERT INTO funpay_keys (coupon_code, plan_type, is_used) VALUES (?, ?, 0)',
-                [code, planType]
-            );
+            await FunPayKey.create({
+                coupon_code: code,
+                plan_type: planType,
+                is_used: false
+            });
             console.log(`[+] Создан: ${code}`);
             createdCount++;
         } catch (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-                // Если дубликат — пробуем еще раз
+            // Если дубликат — пробуем еще раз
+            if (err.name === 'SequelizeUniqueConstraintError') {
                 i--;
                 continue;
             }

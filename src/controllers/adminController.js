@@ -1,4 +1,4 @@
-const { run } = require('../../database');
+const { FunPayKey } = require('../../database');
 require('dotenv').config();
 
 /**
@@ -28,14 +28,15 @@ const generateKeys = async (req, res) => {
         for (let i = 0; i < numKeys; i++) {
             const code = generateKey();
             try {
-                await run(
-                    'INSERT INTO funpay_keys (coupon_code, plan_type, is_used) VALUES (?, ?, 0)',
-                    [code, planType]
-                );
+                await FunPayKey.create({
+                    coupon_code: code,
+                    plan_type: planType,
+                    is_used: false
+                });
                 generatedKeys.push(code);
             } catch (err) {
                 // Если дубликат — пропускаем эту итерацию (генерируем новый)
-                if (err.message.includes('UNIQUE constraint failed')) {
+                if (err.name === 'SequelizeUniqueConstraintError') {
                     i--;
                     continue;
                 }

@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
-require('./database'); // Инициализация БД
+const { initDb } = require('./database'); // Инициализация БД
+initDb();
 
 const authRoutes = require('./src/routes/authRoutes');
 const billingRoutes = require('./src/routes/billingRoutes');
