@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
 
 const validateAppUserAgent = (req, res, next) => {
     const userAgent = req.headers['user-agent'];
-    const requiredUA = process.env.C_PLUS_PLUS_USER_AGENT || 'VortexHardwareAeroLink/2.0';
+    const requiredUA = process.env.C_PLUS_PLUS_USER_AGENT || 'KaliangHardwareAeroLink/2.0';
 
     if (userAgent !== requiredUA) {
         return res.status(403).json({ message: 'Forbidden' });

@@ -23,12 +23,18 @@ app.use(helmet());
 app.use(cors({
     origin: function (origin, callback) {
         console.log('CORS request from origin:', origin);
-        // Разрешаем запросы без origin или запросы с localhost
-        if (!origin || origin.startsWith('http://localhost:')) {
+        // Разрешаем запросы без origin, localhost или деплой-домен
+        const allowedOrigins = [
+            'http://localhost:',
+            'https://landing2-5kk.pages.dev'
+        ];
+        
+        if (!origin || allowedOrigins.some(ao => origin.startsWith(ao))) {
             callback(null, true);
         } else {
             console.log('CORS blocked origin:', origin);
-            callback(new Error('Not allowed by CORS'));
+            // Вместо Error (который может уронить запрос в 500), просто возвращаем false
+            callback(null, false);
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
