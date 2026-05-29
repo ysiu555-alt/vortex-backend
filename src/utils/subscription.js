@@ -7,8 +7,8 @@ const TARIFFS = {
 
 const PLAN_PRICES = {
     WEEK_2: 50,
-    MONTH_1: 85,
-    LIFETIME: 200
+    MONTH_1: 70,
+    LIFETIME: 500
 };
 
 function calculateNewExpiry(currentExpiry, planType) {
