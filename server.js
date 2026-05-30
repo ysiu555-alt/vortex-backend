@@ -22,11 +22,12 @@ app.use(helmet());
 // Настройка CORS
 app.use(cors({
     origin: function (origin, callback) {
-        console.log('CORS request from origin:', origin);
+        // Разрешаем запросы без origin (например, мобильные приложения или curl)
+        if (!origin) {
+            return callback(null, true);
+        }
         
-        // Разрешаем запросы без origin, localhost или деплой-домен и его поддомены
-        const isAllowed = !origin || 
-                          origin.startsWith('http://localhost') || 
+        const isAllowed = origin.startsWith('http://localhost') || 
                           origin === 'https://landing2-5kk.pages.dev' || 
                           origin.endsWith('.landing2-5kk.pages.dev');
         
