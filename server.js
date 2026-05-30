@@ -23,17 +23,17 @@ app.use(helmet());
 app.use(cors({
     origin: function (origin, callback) {
         console.log('CORS request from origin:', origin);
-        // Разрешаем запросы без origin, localhost или деплой-домен
-        const allowedOrigins = [
-            'http://localhost:',
-            'https://landing2-5kk.pages.dev'
-        ];
         
-        if (!origin || allowedOrigins.some(ao => origin.startsWith(ao))) {
+        // Разрешаем запросы без origin, localhost или деплой-домен и его поддомены
+        const isAllowed = !origin || 
+                          origin.startsWith('http://localhost') || 
+                          origin === 'https://landing2-5kk.pages.dev' || 
+                          origin.endsWith('.landing2-5kk.pages.dev');
+        
+        if (isAllowed) {
             callback(null, true);
         } else {
             console.log('CORS blocked origin:', origin);
-            // Вместо Error (который может уронить запрос в 500), просто возвращаем false
             callback(null, false);
         }
     },
