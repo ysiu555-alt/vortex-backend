@@ -38,6 +38,12 @@ const FunPayKey = sequelize.define('FunPayKey', {
     activated_at: { type: DataTypes.DATE, allowNull: true }
 });
 
+const VerificationCode = sequelize.define('VerificationCode', {
+    email: { type: DataTypes.STRING, allowNull: false },
+    code: { type: DataTypes.STRING, allowNull: false },
+    expires_at: { type: DataTypes.DATE, allowNull: false }
+});
+
 // Связи
 User.hasMany(Order, { foreignKey: 'user_id' });
 Order.belongsTo(User, { foreignKey: 'user_id' });
@@ -56,4 +62,4 @@ const initDb = async () => {
     }
 };
 
-module.exports = { sequelize, User, Order, FunPayKey, initDb };
+module.exports = { sequelize, User, Order, FunPayKey, VerificationCode, initDb };
