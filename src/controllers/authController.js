@@ -6,7 +6,7 @@ const { sendVerificationEmail } = require('../utils/mailer');
 const { Op } = require('sequelize');
 require('dotenv').config();
 
-const sendVerificationCode = async (req, res) => {
+const sendVerificationCode = async (req, res, type = 'registration') => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ message: 'Email обязателен' });
@@ -19,7 +19,7 @@ const sendVerificationCode = async (req, res) => {
         await VerificationCode.destroy({ where: { email } });
         await VerificationCode.create({ email, code, expires_at: expiresAt });
 
-        const sent = await sendVerificationEmail(email, code);
+        const sent = await sendVerificationEmail(email, code, type);
         if (!sent) return res.status(500).json({ message: 'Ошибка отправки email' });
 
         res.status(200).json({ message: 'Код отправлен' });
@@ -40,7 +40,7 @@ const verifyCode = async (req, res) => {
             return res.status(400).json({ message: 'Код истек' });
         }
 
-        await verification.destroy(); // Удаляем после успешной проверки
+        // НЕ удаляем код здесь, чтобы его можно было проверить при окончательном действии (регистрация/сброс)
         res.status(200).json({ message: 'Код верен', verified: true });
     } catch (error) {
         console.error('Verify code error:', error);
@@ -52,7 +52,6 @@ const register = async (req, res) => {
     try {
         const { email, password, code } = req.body;
 
-        // ВАЖНО: Добавляем проверку верификации
         const verification = await VerificationCode.findOne({ where: { email, code } });
         if (!verification || new Date() > new Date(verification.expires_at)) {
             return res.status(400).json({ message: 'Email не верифицирован или код истек' });
@@ -115,8 +114,6 @@ const register = async (req, res) => {
     }
 };
 
-// ... (остальной код остается без изменений)
-
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -152,14 +149,9 @@ const login = async (req, res) => {
 
 const appLogin = async (req, res) => {
     try {
-        console.log('--- Debugging Request Body ---');
-        console.log('Type of req.body:', typeof req.body);
-        console.log('Full req.body:', JSON.stringify(req.body));
-        
         const { email, password, hwid, mac_address, ip_address } = req.body;
 
         if (!email || !password || !hwid) {
-            console.log('Validation failed. Fields present:', { email: !!email, password: !!password, hwid: !!hwid });
             return res.status(400).json({ status: 'error', message: 'Email, пароль или HWID не переданы' });
         }
 
@@ -243,8 +235,8 @@ const requestPasswordReset = async (req, res) => {
         const user = await User.findOne({ where: { email } });
         if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
-        // Повторно используем логику отправки кода
-        await sendVerificationCode(req, res);
+        // Отправляем код с типом 'reset'
+        return sendVerificationCode(req, res, 'reset');
     } catch (error) {
         console.error('Request password reset error:', error);
         res.status(500).json({ message: 'Ошибка сервера' });
