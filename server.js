@@ -29,7 +29,9 @@ app.use(cors({
         
         const isAllowed = origin.startsWith('http://localhost') || 
                           origin === 'https://landing2-5kk.pages.dev' || 
-                          origin.endsWith('.landing2-5kk.pages.dev');
+                          origin.endsWith('.landing2-5kk.pages.dev') ||
+                          origin === 'https://kaliang-2.pl' ||
+                          origin === 'https://www.kaliang-2.pl';
         
         if (isAllowed) {
             callback(null, true);
